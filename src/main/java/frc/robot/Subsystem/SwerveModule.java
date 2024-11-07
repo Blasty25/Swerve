@@ -13,6 +13,7 @@ import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.wpilibj.AnalogInput;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.RobotController;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants.DriveConstants;
 import frc.robot.Constants.ModuleConstants;
 
@@ -24,19 +25,19 @@ public class SwerveModule {
 
     private final PIDController turnPidController;
 
-    private final AnalogInput absoluteEncoder;  //To access the Absoulute Encoder through the analog input in the RIO
-    private final boolean absoluteEncoderReversed;  //To check if it is reversed
-    private final double absoluteEncoderOffsetRad; //To check if it is in its offset position
+    private final AnalogInput absoluteEncoder; // To access the Absoulute Encoder through the analog input in the RIO
+    private final boolean absoluteEncoderReversed; // To check if it is reversed
+    private final double absoluteEncoderOffsetRad; // To check if it is in its offset position
 
+    CANSparkMax driveMotor = new CANSparkMax(DriveConstants.driveMotorID, MotorType.kBrushless);
+    CANSparkMax turnMotor = new CANSparkMax(DriveConstants.turnMotorID, MotorType.kBrushless);
 
-    public SwerveModule(boolean driveMotorReversed, boolean turnMotorReversed, int absoluteEncoderID, double absoluteEncoderOffset, boolean absoluteEncoderReversed){
+    public SwerveModule(boolean driveMotorReversed, boolean turnMotorReversed, int absoluteEncoderID,
+            double absoluteEncoderOffset, boolean absoluteEncoderReversed) {
 
         this.absoluteEncoderOffsetRad = absoluteEncoderOffset;
         this.absoluteEncoderReversed = absoluteEncoderReversed;
         absoluteEncoder = new AnalogInput(absoluteEncoderID);
-
-        CANSparkMax driveMotor = new CANSparkMax(DriveConstants.driveMotorID, MotorType.kBrushless);
-        CANSparkMax turnMotor = new CANSparkMax(DriveConstants.turnMotorID, MotorType.kBrushless);
 
         driveMotor.setInverted(driveMotorReversed);
         turnMotor.setInverted(turnMotorReversed);
@@ -56,40 +57,42 @@ public class SwerveModule {
         resetEncoder();
     }
 
-    public double getDrivePos(){
+    public double getDrivePos() {
         return driveEncoder.getPosition();
     }
 
-    public double getTurnPos(){
+    public double getTurnPos() {
         return turnEncoder.getPosition();
     }
 
-    public double getDriveVelocity(){
+    public double getDriveVelocity() {
         return driveEncoder.getVelocity();
     }
 
-    public double getTurnVelocity(){
+    public double getTurnVelocity() {
         return turnEncoder.getVelocity();
     }
-    
-    public double getAbsoluteEncoderRad(){
+
+    public double getAbsoluteEncoderRad() {
         double angle = absoluteEncoder.getVoltage() / RobotController.getInputVoltage();
         angle *= 2.0 * Math.PI;
         angle -= absoluteEncoderOffsetRad;
         return angle * (absoluteEncoderReversed ? -1.0 : 1.0);
     }
 
-    public void resetEncoder(){
+    public void resetEncoder() {
         driveEncoder.setPosition(0);
         turnEncoder.setPosition(getAbsoluteEncoderRad());
     }
 
-    public SwerveModuleState getState(){
+    public SwerveModuleState getState() {
         return new SwerveModuleState(getDriveVelocity(), new Rotation2d(getTurnPos()));
     }
 
-    public void setDesiredState(SwerveModuleState state){
+    public void setDesiredState(SwerveModuleState state) {
         state = SwerveModuleState.optimize(state, getState().angle);
-        driveMotor.set();
+        driveMotor.set(state.speedMetersPerSecond / DriveConstants.kPhysicalMaxSpeedMetersPerSecond);
+        turnMotor.set(turnPidController.calculate(getTurnPos(), state.angle.getRadians()));
+        SmartDashboard.putString("Swerve[" + absoluteEncoder.getChannel() + "] state", state.toString());
     }
 }

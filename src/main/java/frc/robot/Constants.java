@@ -11,6 +11,7 @@ public class Constants {
     public static final class DriveConstants {
         public final static int driveMotorID = 1;
         public final static int turnMotorID = 2;
+        public static final double kPhysicalMaxSpeedMetersPerSecond = 5;
     }
 
     public static final class ModuleConstants{
